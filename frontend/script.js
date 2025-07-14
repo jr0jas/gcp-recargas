@@ -3,8 +3,7 @@ document.getElementById('recargaForm').addEventListener('submit', async function
 
   const numero = document.getElementById('numero').value;
   const monto = document.getElementById('monto').value;
-  const endpoint = 'https://us-central1-gcp-recargas.cloudfunctions.net/processRecharge';
-
+  const endpoint = 'https://us-central1-gcp-recargas.cloudfunctions.net/publishRecharge';
 
   try {
     const res = await fetch(endpoint, {
