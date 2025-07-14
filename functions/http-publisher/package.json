@@ -1,7 +1,8 @@
 {
   "name": "http-publisher",
   "version": "1.0.0",
+  "main": "index.js",
   "dependencies": {
-    "@google-cloud/pubsub": "^3.0.0"
+    "@google-cloud/pubsub": "^4.0.0"
   }
 }
