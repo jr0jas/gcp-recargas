@@ -3,7 +3,8 @@ document.getElementById('recargaForm').addEventListener('submit', async function
 
   const numero = document.getElementById('numero').value;
   const monto = document.getElementById('monto').value;
-  const endpoint = 'YOUR_CLOUD_FUNCTION_URL'; // ⚠️ Reemplaza esto
+  const endpoint = 'https://us-central1-gcp-recargas.cloudfunctions.net/processRecharge';
+
 
   try {
     const res = await fetch(endpoint, {
