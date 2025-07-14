@@ -2,17 +2,17 @@ const { PubSub } = require('@google-cloud/pubsub');
 const pubsub = new PubSub();
 
 exports.publishRecharge = async (req, res) => {
-  // 👇 Agrega soporte para CORS
+  // CORS headers
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type');
 
-  // 👇 Responde a solicitudes OPTIONS (preflight)
+  // Handle preflight (OPTIONS)
   if (req.method === 'OPTIONS') {
     return res.status(204).send('');
   }
 
-  // Verifica método
+  // Validate method
   if (req.method !== 'POST') {
     return res.status(405).send('Method Not Allowed');
   }
