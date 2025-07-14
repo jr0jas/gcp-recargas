@@ -1,36 +1,55 @@
-const { PubSub } = require('@google-cloud/pubsub');
-const pubsub = new PubSub();
+# 📦 process-recharge
 
-exports.publishRecharge = async (req, res) => {
-  // CORS headers
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type');
+Esta función de Google Cloud Functions se suscribe al tópico `recargas-topic` de Pub/Sub. Su propósito es procesar de forma asíncrona los eventos de recarga enviados desde el frontend de la plataforma.
 
-  // Handle preflight (OPTIONS)
-  if (req.method === 'OPTIONS') {
-    return res.status(204).send('');
-  }
+## 🚀 Funcionalidad
 
-  // Validate method
-  if (req.method !== 'POST') {
-    return res.status(405).send('Method Not Allowed');
-  }
+Cuando se publica un mensaje en el tópico `recargas-topic` (por ejemplo, número telefónico y monto), esta función:
 
-  const { numero, monto } = req.body;
+- Lee el mensaje.
+- Lo decodifica desde base64.
+- Extrae los campos `phone` y `amount`.
+- Registra un log con la información de la recarga.
+- Posteriormente (en el paso 3 del examen), esta función podrá invocar un microservicio en GKE para almacenar la transacción.
 
-  if (!numero || !monto) {
-    return res.status(400).send('Número y monto son requeridos');
-  }
+## 📥 Estructura del mensaje esperado
 
-  try {
-    const data = Buffer.from(JSON.stringify({ phone: numero, amount: monto }));
-    await pubsub.topic('recargas-topic').publish(data);
+```json
+{
+  "phone": "83082688",
+  "amount": 5000
+}
+```
 
-    console.log('✅ Publicado en recargas-topic');
-    res.status(200).send('Mensaje publicado en Pub/Sub');
-  } catch (err) {
-    console.error('❌ Error al publicar en Pub/Sub:', err);
-    res.status(500).send('Error al publicar en Pub/Sub');
-  }
-};
+## ⚙️ Despliegue
+
+Ejecutar en Cloud Shell:
+
+```bash
+gcloud functions deploy processRecharge \
+  --runtime nodejs18 \
+  --trigger-topic recargas-topic \
+  --region=us-central1 \
+  --source=. \
+  --entry-point=processRecharge
+```
+
+## 🧪 Verificación
+
+Para probar esta función, puedes publicar un mensaje al tópico manualmente:
+
+```bash
+gcloud pubsub topics publish recargas-topic \
+  --message='{"phone": "83082688", "amount": 5000}'
+```
+
+Luego consulta los logs:
+
+```bash
+gcloud functions logs read processRecharge --region=us-central1
+```
+
+## 📌 Notas
+
+* No requiere CORS porque es una función suscriptora de Pub/Sub, no expuesta vía HTTP.
+* A futuro, esta función llamará al microservicio de registro de venta en GKE mediante una solicitud HTTP segura.

@@ -1,12 +1,20 @@
 /**
- * Cloud Function triggered by Pub/Sub message
+ * Cloud Function triggered by Pub/Sub to process recharge events.
  */
+
 exports.processRecharge = (message, context) => {
-  const data = JSON.parse(Buffer.from(message.data, 'base64').toString());
+  try {
+    const data = JSON.parse(Buffer.from(message.data, 'base64').toString());
 
-  console.log('📥 Mensaje recibido en processRecharge:');
-  console.log('📞 Teléfono:', data.phone);
-  console.log('💰 Monto:', data.amount);
+    const { phone, amount } = data;
 
-  // Aquí más adelante puedes llamar al microservicio GKE vía HTTP
+    console.log(`📲 Procesando recarga: Número ${phone}, Monto ₡${amount}`);
+
+    // Aquí puedes conectar con el microservicio en GKE para registrar la venta más adelante.
+
+    return;
+  } catch (err) {
+    console.error('❌ Error al procesar mensaje de Pub/Sub:', err);
+    throw new Error('Error al procesar mensaje');
+  }
 };

@@ -1,6 +1,13 @@
 {
-  "name": "processRecharge",
+  "name": "process-recharge",
   "version": "1.0.0",
+  "description": "Función suscriptora para procesar recargas desde Pub/Sub",
   "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": "18.x"
+  },
   "dependencies": {}
 }
