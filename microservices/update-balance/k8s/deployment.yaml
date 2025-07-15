@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: update-balance
+  labels:
+    app: update-balance
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: update-balance
+  template:
+    metadata:
+      labels:
+        app: update-balance
+    spec:
+      containers:
+        - name: update-balance
+          image: gcr.io/gcp-recargas/update-balance:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /var/secrets/google/key.json
+          volumeMounts:
+            - name: google-cloud-key
+              mountPath: /var/secrets/google
+              readOnly: true
+      volumes:
+        - name: google-cloud-key
+          secret:
+            secretName: gcp-service-account

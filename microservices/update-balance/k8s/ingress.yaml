@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: update-balance-ingress
+  annotations:
+    kubernetes.io/ingress.class: "gce"  # Controlador GCP
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /update-balance
+            pathType: Prefix
+            backend:
+              service:
+                name: update-balance
+                port:
+                  number: 80
