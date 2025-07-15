@@ -1,83 +1,71 @@
-const fetch = require('node-fetch'); // Dependencia para hacer llamadas HTTP
+const fetch = require('node-fetch');
 
-// URLs públicas de los microservicios expuestos vía Ingress
 const REGISTER_SERVICE_URL = 'http://34.8.91.19/register';
 const UPDATE_BALANCE_URL = 'http://34.117.118.60/update-balance';
 
-exports.publishRecharge = async (req, res) => {
-  // Configuraciones CORS para permitir peticiones desde cualquier origen
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type');
-
-  // Responder preflight OPTIONS para CORS
-  if (req.method === 'OPTIONS') {
-    return res.status(204).send('');
-  }
-
-  // Solo aceptar POST
-  if (req.method !== 'POST') {
-    return res.status(405).send('Method Not Allowed');
-  }
-
-  // Extraer datos del body JSON
-  const { numero, monto } = req.body;
-
-  // Validar campos requeridos
-  if (!numero || !monto) {
-    return res.status(400).send('Número y monto son requeridos');
-  }
-
-  // Flags para controlar resultados de ambos microservicios
-  let registerSuccess = false;
-  let updateSuccess = false;
-
+exports.processRecharge = async (message, context) => {
   try {
-    // Llamar microservicio de registro de venta
-    const registerResponse = await fetch(REGISTER_SERVICE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: numero, amount: monto }),
-    });
+    const data = JSON.parse(Buffer.from(message.data, 'base64').toString());
+    const { phone, amount } = data;
 
-    if (registerResponse.ok) {
-      registerSuccess = true;
-      console.log('✅ Recarga registrada correctamente en el microservicio de registro');
-    } else {
-      const errorText = await registerResponse.text();
-      console.error('❌ Error en microservicio de registro:', errorText);
+    if (!phone || !amount) {
+      console.error('❌ Faltan campos requeridos en el mensaje:', data);
+      return;
     }
-  } catch (error) {
-    console.error('❌ Falló llamada al microservicio de registro:', error);
-  }
 
-  try {
-    // Llamar microservicio de actualización de saldo
-    const updateResponse = await fetch(UPDATE_BALANCE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: numero, amount: monto }),
-    });
+    let registerSuccess = false;
+    let updateSuccess = false;
 
-    if (updateResponse.ok) {
-      updateSuccess = true;
-      console.log('✅ Saldo actualizado correctamente en el microservicio de saldo');
-    } else {
-      const errorText = await updateResponse.text();
-      console.error('❌ Error en microservicio de saldo:', errorText);
+    // Llamar al microservicio de registro
+    try {
+      const res1 = await fetch(REGISTER_SERVICE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, amount }),
+      });
+
+      if (res1.ok) {
+        registerSuccess = true;
+        console.log(`✅ Registro exitoso para ${phone}`);
+      } else {
+        const errText = await res1.text();
+        console.error(`❌ Error registrando recarga: ${errText}`);
+      }
+    } catch (err) {
+      console.error('❌ Falló llamada al microservicio de registro:', err);
     }
-  } catch (error) {
-    console.error('❌ Falló llamada al microservicio de saldo:', error);
-  }
 
-  // Responder según resultado de ambas llamadas
-  if (registerSuccess && updateSuccess) {
-    return res.status(200).send('Recarga registrada y saldo actualizado exitosamente');
-  } else if (registerSuccess) {
-    return res.status(206).send('Recarga registrada, pero fallo actualización de saldo');
-  } else if (updateSuccess) {
-    return res.status(206).send('Saldo actualizado, pero fallo registro de recarga');
-  } else {
-    return res.status(502).send('Fallaron ambos microservicios');
+    // Llamar al microservicio de actualización de saldo
+    try {
+      const res2 = await fetch(UPDATE_BALANCE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, amount }),
+      });
+
+      if (res2.ok) {
+        updateSuccess = true;
+        console.log(`✅ Saldo actualizado para ${phone}`);
+      } else {
+        const errText = await res2.text();
+        console.error(`❌ Error actualizando saldo: ${errText}`);
+      }
+    } catch (err) {
+      console.error('❌ Falló llamada al microservicio de saldo:', err);
+    }
+
+    // Resultado final
+    if (registerSuccess && updateSuccess) {
+      console.log(`🎉 Ambos microservicios respondieron correctamente para ${phone}`);
+    } else if (registerSuccess) {
+      console.warn(`⚠️ Solo se registró la recarga, falló la actualización de saldo`);
+    } else if (updateSuccess) {
+      console.warn(`⚠️ Solo se actualizó el saldo, falló el registro de la recarga`);
+    } else {
+      console.error(`❌ Fallaron ambos microservicios`);
+    }
+
+  } catch (err) {
+    console.error('❌ Error procesando mensaje Pub/Sub:', err);
   }
 };
