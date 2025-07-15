@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: register-sale-ingress
+  annotations:
+    kubernetes.io/ingress.class: "gce"  # Usar el controlador de GCP
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /register
+        pathType: Prefix
+        backend:
+          service:
+            name: register-sale
+            port:
+              number: 80
