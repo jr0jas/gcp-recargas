@@ -1,73 +1,92 @@
-# 📤 publish-recharge
+````markdown
+# HTTP Publisher
 
-Esta función HTTP de Google Cloud Functions expone un endpoint `POST` que recibe solicitudes de recarga desde el frontend y publica los datos (número telefónico y monto) en el tópico `recargas-topic` de Pub/Sub para ser procesados de manera asíncrona.
+Esta Cloud Function expone un endpoint HTTP que recibe número de teléfono y monto, y publica un mensaje en un tópico de Pub/Sub para su posterior procesamiento.
 
-## 🚀 Funcionalidad
+## Estructura
 
-Cuando se envía un formulario desde el frontend:
+- `index.js` – Lógica de la función `publishRecharge`
+- `package.json` – Dependencias (`@google-cloud/pubsub`)
 
-- Se realiza una solicitud `POST` con un JSON que contiene `numero` y `monto`.
-- La función valida el método y los datos.
-- Publica el mensaje en el tópico `recargas-topic` de Pub/Sub.
-- Devuelve una respuesta indicando si la operación fue exitosa.
+## Variables a configurar
 
-## 🌐 CORS
+- `TOPIC` en `index.js`: nombre del tópico de Pub/Sub (por defecto `recharge-topic`).
 
-Esta función maneja CORS para permitir llamadas desde el navegador:
+## Instalación
 
-- Permite cualquier origen (`Access-Control-Allow-Origin: *`).
-- Maneja preflight `OPTIONS` respondiendo con `204 No Content`.
+```bash
+cd functions/http-publisher
+npm install
+````
 
-## 📥 Estructura esperada del body
-
-```json
-{
-  "numero": "83082688",
-  "monto": 5000
-}
-```
-
-## ⚙️ Despliegue
+## Despliegue
 
 ```bash
 gcloud functions deploy publishRecharge \
   --runtime nodejs18 \
-  --region=us-central1 \
   --trigger-http \
   --allow-unauthenticated \
-  --source=. \
-  --entry-point=publishRecharge
+  --region us-central1
 ```
 
-## 🧪 Pruebas
+Al terminar, anota la URL que te regrese GCP para usarla en el front-end.
 
-Puedes probar la función desde el navegador o con `curl`:
+## Uso desde el front-end
 
-### Con `curl`
+Envía un POST a la URL con JSON:
+
+```json
+{
+  "numero": "8881234567",
+  "monto": 5000
+}
+```
+
+Recibirás una respuesta 200 con el `messageId` de Pub/Sub.
+
+````
+
+```markdown
+# Process Recharge
+
+Esta Cloud Function está suscrita al tópico de Pub/Sub (`recharge-topic`). Cada vez que se publica un mensaje, la función:
+
+1. Parsea `{ phone, amount }` del mensaje.  
+2. Llama al microservicio de registro (`/register`).  
+3. Llama al microservicio de actualización de saldo (`/update-balance`).
+
+## Estructura
+
+- `index.js` – Lógica de la función `processRecharge`
+- `package.json` – Dependencias (`node-fetch`)
+
+## Variables a configurar
+
+- `REGISTER_SERVICE_URL` en `index.js`: URL de tu microservicio de registro.
+- `UPDATE_BALANCE_URL` en `index.js`: URL de tu microservicio de saldo.
+
+## Instalación
 
 ```bash
-curl -X POST https://REGION-PROJECT.cloudfunctions.net/publishRecharge \
-  -H "Content-Type: application/json" \
-  -d '{"numero":"83082688", "monto":5000}'
+cd functions/process-recharge
+npm install
+````
+
+## Despliegue
+
+```bash
+gcloud functions deploy processRecharge \
+  --runtime nodejs18 \
+  --trigger-topic recharge-topic \
+  --region us-central1
 ```
 
-Reemplaza `REGION-PROJECT` con tu URL real.
+## Logs y monitoreo
 
-### Desde el frontend
+* En la consola de Cloud Functions, revisa los logs para ver:
 
-El formulario puede llamar esta función usando `fetch()` con un `POST` como en este ejemplo:
+  * 📲 Inicio de procesamiento
+  * ✅/❌ llamados a cada microservicio
 
-```javascript
-fetch(endpoint, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ numero, monto })
-});
 ```
-
-## 📌 Notas
-
-- Esta función es la puerta de entrada del sistema: desacopla el frontend del backend usando Pub/Sub.
-- La validación básica se realiza en esta etapa.
-- No almacena datos, sólo los publica para que sean procesados posteriormente por otra función.
-
+```

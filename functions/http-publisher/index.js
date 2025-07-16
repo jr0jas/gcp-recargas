@@ -1,71 +1,32 @@
-const fetch = require('node-fetch');
+// functions/http-publisher/index.js
+const { PubSub } = require('@google-cloud/pubsub');
+const pubsub = new PubSub();
+const TOPIC = 'recharge-topic';  // Debe coincidir con el nombre de tu tópico
 
-const REGISTER_SERVICE_URL = 'http://34.8.91.19/register';
-const UPDATE_BALANCE_URL = 'http://34.117.118.60/update-balance';
+exports.publishRecharge = async (req, res) => {
+  if (req.method !== 'POST') {
+    res.set('Allow', 'POST');
+    return res.status(405).send('Método no permitido: use POST');
+  }
 
-exports.processRecharge = async (message, context) => {
+  const { numero: phone, monto } = req.body;
+  if (!phone || monto === undefined) {
+    return res.status(400).json({ error: 'Faltan campos "numero" o "monto"' });
+  }
+
+  const amount = Number(monto);
+  if (isNaN(amount)) {
+    return res.status(400).json({ error: '"monto" debe ser un número' });
+  }
+
   try {
-    const data = JSON.parse(Buffer.from(message.data, 'base64').toString());
-    const { phone, amount } = data;
-
-    if (!phone || !amount) {
-      console.error('❌ Faltan campos requeridos en el mensaje:', data);
-      return;
-    }
-
-    let registerSuccess = false;
-    let updateSuccess = false;
-
-    // Llamar al microservicio de registro
-    try {
-      const res1 = await fetch(REGISTER_SERVICE_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, amount }),
-      });
-
-      if (res1.ok) {
-        registerSuccess = true;
-        console.log(`✅ Registro exitoso para ${phone}`);
-      } else {
-        const errText = await res1.text();
-        console.error(`❌ Error registrando recarga: ${errText}`);
-      }
-    } catch (err) {
-      console.error('❌ Falló llamada al microservicio de registro:', err);
-    }
-
-    // Llamar al microservicio de actualización de saldo
-    try {
-      const res2 = await fetch(UPDATE_BALANCE_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, amount }),
-      });
-
-      if (res2.ok) {
-        updateSuccess = true;
-        console.log(`✅ Saldo actualizado para ${phone}`);
-      } else {
-        const errText = await res2.text();
-        console.error(`❌ Error actualizando saldo: ${errText}`);
-      }
-    } catch (err) {
-      console.error('❌ Falló llamada al microservicio de saldo:', err);
-    }
-
-    // Resultado final
-    if (registerSuccess && updateSuccess) {
-      console.log(`🎉 Ambos microservicios respondieron correctamente para ${phone}`);
-    } else if (registerSuccess) {
-      console.warn(`⚠️ Solo se registró la recarga, falló la actualización de saldo`);
-    } else if (updateSuccess) {
-      console.warn(`⚠️ Solo se actualizó el saldo, falló el registro de la recarga`);
-    } else {
-      console.error(`❌ Fallaron ambos microservicios`);
-    }
-
+    const messageId = await pubsub
+      .topic(TOPIC)
+      .publish(Buffer.from(JSON.stringify({ phone, amount })));
+    console.log(`📨 Publicado en Pub/Sub [ID=${messageId}]: ${phone} + ₡${amount}`);
+    res.status(200).json({ message: 'Recarga enviada a procesamiento', messageId });
   } catch (err) {
-    console.error('❌ Error procesando mensaje Pub/Sub:', err);
+    console.error('❌ Error publicando en Pub/Sub:', err);
+    res.status(500).json({ error: 'Error interno al publicar en Pub/Sub' });
   }
 };
