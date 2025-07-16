@@ -1,7 +1,8 @@
 // functions/http-publisher/index.js
 const { PubSub } = require('@google-cloud/pubsub');
+const { HttpFunction } = require('@google-cloud/functions-framework');
 const pubsub = new PubSub();
-const TOPIC = 'recharge-topic';  // Debe coincidir con el nombre de tu tópico
+const TOPIC = 'recharge-topic';
 
 exports.publishRecharge = async (req, res) => {
   if (req.method !== 'POST') {
@@ -30,3 +31,6 @@ exports.publishRecharge = async (req, res) => {
     res.status(500).json({ error: 'Error interno al publicar en Pub/Sub' });
   }
 };
+
+// Registra la función con Functions Framework para que escuche HTTP
+HttpFunction.http('publishRecharge', exports.publishRecharge);

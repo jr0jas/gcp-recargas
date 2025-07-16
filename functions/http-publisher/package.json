@@ -2,7 +2,12 @@
   "name": "http-publisher",
   "version": "1.0.0",
   "main": "index.js",
+  "engines": { "node": "20.x" },
   "dependencies": {
-    "@google-cloud/pubsub": "^4.0.0"
+    "@google-cloud/pubsub": "^4.0.0",
+    "@google-cloud/functions-framework": "^5.2.0"
+  },
+  "scripts": {
+    "start": "functions-framework --target=publishRecharge"
   }
 }
